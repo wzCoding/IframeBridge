@@ -1,0 +1,70 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+coverage/
+*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*.local
+.env.local
+
+# IDEs/editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Lockfiles (optional — include if you don't want to commit lockfile)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Temp / cache
+.cache/
+.tmp/
+temp/
+*.tmp
+
+# Test
+coverage/
+playwright-report/
+.vitest/
+
+# Rollup / tooling
+.rollup.cache/
+.rpt2_cache/
+tsconfig.tsbuildinfo
+
+# Examples / demo build artifacts
+examples/dist/
+examples/node_modules/
+
+# macOS Finder
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# Windows
+ehthumbs.db
+Desktop.ini
