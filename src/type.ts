@@ -3,8 +3,8 @@ export interface IframeBridgeOptions {
     origin?: string
     originWhiteList?: string[]
     type?: 'main' | 'iframe'
-    encodeFn: EncodeFn
-    decodeFn: DecodeFn
+    encodeFn?: EncodeFn
+    decodeFn?: DecodeFn
 }
 
 export interface EncodeFn {

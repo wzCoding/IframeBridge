@@ -61,8 +61,6 @@ export class IframeBridge {
             // 这里直接覆盖实例属性，后续对 originWhiteList 的访问由外部 types 管理
             // 因为 TypeScript 局限，本处以 any 方式扩展属性
             ; (this as any).originWhiteList = [this.origin, ...originWhiteList];
-        } else {
-            ; (this as any).originWhiteList = [this.origin];
         }
 
         // 绑定 message 事件
@@ -88,6 +86,15 @@ export class IframeBridge {
 
     isMainPage(): boolean {
         return this.role === 'main';
+    }
+    
+    // 校验 origin
+    #checkOrigin(origin: string): boolean {
+        if (!origin) return false
+        if (!this.isMainPage()) return false
+        // 如果配置了白名单，就使用白名单对 origin 进行校验
+        const originWhiteList = (this as any).originWhiteList
+        return Array.isArray(originWhiteList) && originWhiteList.length > 0 && !originWhiteList.includes(origin)
     }
 
     #getMessageKey(): string {
@@ -232,8 +239,7 @@ export class IframeBridge {
             }
             case 'message': {
                 // 白名单校验（主页面）
-                const originWhiteList: string[] = (this as any).originWhiteList || [this.origin];
-                if (Array.isArray(originWhiteList) && !originWhiteList.includes(origin)) {
+                if (this.#checkOrigin(origin)) {
                     // eslint-disable-next-line no-console
                     console.warn(`IframeBridge: Ignored message from origin ${origin} not in whitelist`);
                     return;
@@ -294,8 +300,7 @@ export class IframeBridge {
         const sourceWindow: Window | null = message._sourceWindow || null;
 
         // 白名单校验
-        const originWhiteList: string[] = (this as any).originWhiteList || [this.origin];
-        if (Array.isArray(originWhiteList) && !originWhiteList.includes(origin)) {
+        if (this.#checkOrigin(origin)) {
             throw new Error(`Origin ${origin} is not in the whitelist`);
         }
 
@@ -377,14 +382,6 @@ export class IframeBridge {
         const raw = event.data as IframeMessage;
         const origin = event.origin;
         const sourceWindow = event.source as Window | null;
-
-        // 子页面可做白名单校验
-        const originWhitelist: string[] = (this as any).originWhitelist || [this.origin];
-        if (Array.isArray(originWhitelist) && !originWhitelist.includes(origin)) {
-            // eslint-disable-next-line no-console
-            console.warn(`IframeBridge: Ignored message from origin ${origin} not in whitelist`);
-            return;
-        }
 
         try {
             // decode payload（支持异步 decode）
