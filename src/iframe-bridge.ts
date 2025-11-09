@@ -64,17 +64,7 @@ export class IframeBridge {
         }
 
         // 绑定 message 事件
-        window.addEventListener('message', (e: MessageEvent) => {
-            // 忽略异常格式事件
-            if (!e || !e.data || typeof e.data.type !== 'string') return;
-            if (this.isMainPage()) {
-                // 主页面处理消息
-                this.#receiveMessage(e);
-            } else {
-                // iframe 页面处理消息
-                this.#handleMessageFromEvent(e);
-            }
-        });
+        window.addEventListener('message', this.#handleMessageEvent);
 
         // 初始化注册
         this.#initRegistration().catch((err: Error) => {
@@ -84,10 +74,26 @@ export class IframeBridge {
         });
     }
 
+    #handleMessageEvent(e: MessageEvent): void {
+        // 忽略异常格式事件
+        if (!e || !e.data || typeof e.data.type !== 'string') return;
+        if (this.isMainPage()) {
+            // 主页面处理消息
+            this.#receiveMessage(e);
+        } else {
+            // iframe 页面处理消息
+            this.#handleMessageFromEvent(e);
+        }
+    }
+
+    destory() {
+        window.removeEventListener("message", this.#handleMessageEvent)
+    }
+
     isMainPage(): boolean {
         return this.role === 'main';
     }
-    
+
     // 校验 origin
     #checkOrigin(origin: string): boolean {
         if (!origin) return false
