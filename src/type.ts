@@ -1,29 +1,30 @@
+export type PageType = 'main' | 'iframe';
+export type MessageType = 'register' | 'message' | string;
+
 export interface IframeBridgeOptions {
-    iframeId: string
-    origin?: string
-    originWhiteList?: string[]
-    type?: 'main' | 'iframe'
-    encodeFn?: EncodeFn
-    decodeFn?: DecodeFn
+  iframeId?: string;
+  origin?: string;
+  originWhitelist?: string[] | undefined; // undefined 表示不启用白名单校验
+  type?: PageType;
+  lifecycle?: {
+    autoDestroy?: boolean;
+  };
 }
 
-export interface EncodeFn {
-    (payload: unknown): string | object | Promise<string | object>
-}
 
-export interface DecodeFn {
-    (encode: unknown, meta?: { origin?: string, sourceWindow?: Window | null }): unknown | Promise<unknown>
-}
 
 export interface IframeMessage {
-    type: 'register' | 'message'
-    key: string
-    sourceId: string
-    targetId: string
-    origin: string
-    path: string[]
-    data: unknown
-    timestamp: number
-    _origin?: string
-    _sourceWindow?: Window | null
+  type?: MessageType;
+  key?: string;
+  sourceId?: string;
+  targetId?: string;
+  origin?: string;
+  path?: string[];
+  data?: unknown; // 存放编码后的数据（base64字符串）
+  timestamp?: number;
+}
+
+export interface MessageEventData extends IframeMessage {
+  // 用于传递 event.source 时在注册流程中保留
+  source?: WindowProxy | null;
 }

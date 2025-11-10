@@ -1,72 +1,104 @@
+// rollup.config.js
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
-import typescript from 'rollup-plugin-typescript2';
-import { terser } from 'rollup-plugin-terser';
+import typescript from '@rollup/plugin-typescript';
+// import { terser } from 'rollup-plugin-terser';
 import dts from 'rollup-plugin-dts';
-import path from 'path';
-
-const pkg = require('./package.json');
+import pkg from './package.json';
 
 const input = 'src/index.ts';
-const name = 'IframeBridge'; // UMD 全局名（若需要 UMD）
+
+// 外部模块，避免把依赖打包进 bundle
+const externalDeps = [...Object.keys(pkg.peerDependencies || {}), ...Object.keys(pkg.dependencies || {})];
+
+// UMD 全局变量映射，如果依赖了外部库，需要在这里指定对应的全局变量名称
+const globals = {
+  // 'some-lib': 'SomeLib'
+};
 
 export default [
-  // ESM & CJS build
+  // ESM
   {
     input,
-    external: [
-      // 列出要作为外部的依赖（不打包）
-      ...Object.keys(pkg.peerDependencies || {}),
-      ...Object.keys(pkg.dependencies || {}) // 可选择把 dependencies 也 externalize
-    ],
-    plugins: [
-      resolve({ browser: true, extensions: ['.js', '.ts', '.json'] }),
-      commonjs(),
-      json(),
-      typescript({
-        tsconfig: path.resolve(__dirname, 'tsconfig.json'),
-        useTsconfigDeclarationDir: true,
-        clean: true
-      })
-    ],
-    output: [
-      { file: pkg.module || 'dist/esm/index.js', format: 'es', sourcemap: true },
-      { file: pkg.main || 'dist/cjs/index.js', format: 'cjs', sourcemap: true, exports: 'named' }
-    ]
-  },
-
-  // Minified UMD build (optional)
-  {
-    input,
-    external: [
-      ...Object.keys(pkg.peerDependencies || {})
-    ],
+    external: externalDeps,
     plugins: [
       resolve({ browser: true }),
       commonjs(),
       json(),
-      typescript({
-        tsconfig: path.resolve(__dirname, 'tsconfig.json'),
-        tsconfigOverride: { compilerOptions: { declaration: false } }
-      }),
-      terser()
+      typescript({ tsconfig: './tsconfig.json', declaration: false })
     ],
     output: {
-      file: pkg.browser || 'dist/umd/index.min.js',
-      format: 'umd',
-      name,
+      file: pkg.module || 'dist/esm/index.js',
+      format: 'es',
       sourcemap: true,
-      globals: {
-        // 对外部依赖的全局变量映射
-      }
-    }
+    },
   },
 
-  // Bundle type declarations into a single file
+  // CJS
   {
-    input: 'dist/types/src/index.d.ts', // rollup-plugin-typescript2 会生成 declaration 到这里
-    output: [{ file: pkg.types || 'dist/types/index.d.ts', format: 'es' }],
-    plugins: [dts()]
+    input,
+    external: externalDeps,
+    plugins: [
+      resolve(),
+      commonjs(),
+      json(),
+      typescript({ tsconfig: './tsconfig.json', declaration: false })
+    ],
+    output: {
+      file: pkg.main || 'dist/cjs/index.js',
+      format: 'cjs',
+      sourcemap: true,
+      exports: 'named'
+    },
+  },
+
+  // UMD (non-minified)
+  {
+    input,
+    external: externalDeps, // 如果希望 UMD 包内含所有依赖，把 external 改为 []
+    plugins: [
+      resolve({ browser: true }),
+      commonjs(),
+      json(),
+      typescript({ tsconfig: './tsconfig.json', declaration: false })
+    ],
+    output: {
+      file: 'dist/umd/iframe-bridge.umd.js',
+      format: 'umd',
+      name: 'IframeBridge',
+      globals,
+      sourcemap: true
+    },
+  },
+
+  // UMD (minified)
+  {
+    input,
+    external: externalDeps,
+    plugins: [
+      resolve({ browser: true }),
+      commonjs(),
+      json(),
+      typescript({ tsconfig: './tsconfig.json', declaration: false }),
+      // terser()
+    ],
+    output: {
+      file: 'dist/umd/iframe-bridge.umd.min.js',
+      format: 'umd',
+      name: 'IframeBridge',
+      globals,
+      sourcemap: true
+    },
+  },
+
+  // Optional: Bundle d.ts into single declaration file (requires rollup-plugin-dts)
+  {
+    input: 'dist/types/index.d.ts', // produced by tsc --emitDeclarationOnly
+    plugins: [dts()],
+    output: {
+      file: 'dist/types/index.d.ts',
+      format: 'es'
+    }
   }
 ];

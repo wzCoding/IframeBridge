@@ -10,12 +10,16 @@
     "dist"
   ],
   "scripts": {
+    "clean": "rimraf dist",
+    "lint": "eslint \"src/**/*.{ts,tsx,js}\" --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:watch": "vitest --watch",
-    "build": "rollup -c",
-    "lint": "eslint . --ext .ts"
+    "build:types": "tsc --emitDeclarationOnly --declaration --declarationDir dist/types --project tsconfig.json",
+    "build:rollup": "rollup -c",
+    "build": "npm run clean && npm run build:types && npm run build:rollup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "start:demo": "serve demo -p 8080"
   },
   "keywords": [
     "iframe",
@@ -26,6 +30,7 @@
   "author": "wzCoding",
   "license": "ISC",
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
@@ -34,6 +39,7 @@
     "eslint": "^9.39.1",
     "jsdom": "^18.0.1",
     "prettier": "^3.6.2",
+    "rimraf": "^6.1.0",
     "rollup": "^4.52.5",
     "rollup-plugin-dts": "^6.2.3",
     "rollup-plugin-typescript2": "^0.36.0",
