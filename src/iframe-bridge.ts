@@ -38,10 +38,21 @@ export class IframeBridge {
 
     constructor(options: IframeBridgeOptions = {}) {
         const { iframeId, origin, originWhitelist, type, lifecycle } = options;
-        this.iframeId = iframeId || this.defaultMainPageId;
         this.origin = origin || window.location.origin;
         this.role = type;
         this._autoDestroy = !!lifecycle?.autoDestroy;
+
+        // 临时设置 iframeId（若后续判定为 main 会被覆盖为 DEFAULT_MAIN_ID）
+        this.iframeId = iframeId || DEFAULT_MAIN_ID;
+
+        // 如果 role type 显式传 main，或者通过检测函数判断为主页面，
+        // 那么强制把实例 id 设为默认主 id，保证与路由判断保持一致。
+        if (this.isMainPage()) {
+            if (this.iframeId !== DEFAULT_MAIN_ID) {
+                console.warn('IframeBridge: running as main page — iframeId is forced to "main" for routing consistency.');
+            }
+            this.iframeId = DEFAULT_MAIN_ID;
+        }
 
         if (Array.isArray(originWhitelist) && originWhitelist.length > 0) {
             this.originWhitelist = [this.origin, ...originWhitelist];
@@ -158,15 +169,45 @@ export class IframeBridge {
         }
     }
 
+    // 创建消息对象
     private createMessage(message: Partial<IframeMessage> = {}, type: MessageType = 'message'): IframeMessage {
+        // 原始数据（可能为已编码字符串或原始对象/字符串）
+        const raw = message.data === undefined ? null : message.data;
+
+        // encoded 优先取调用方显式提供的值
+        let encodedFlag: boolean | undefined = message.encoded;
+
+        // 若调用方未显式传 encoded，则尝试通过格式推断
+        if (encodedFlag === undefined) {
+            encodedFlag = this.enCodeMessage(raw) ? true : false;
+        }
+
+        let finalData: unknown = raw;
+
+        // 如果当前判断为未编码（false 或 undefined），则对原始数据进行编码并标记 encoded=true
+        if (!encodedFlag && raw !== null && raw !== undefined) {
+            const enc = this.enCodeMessage(raw);
+            if (enc !== null) {
+                finalData = enc;
+                encodedFlag = true;
+            } else {
+                // 若编码失败，保留原始数据并保持 encoded=false（或根据需求抛错/警告）
+                // console.warn('encodeInternal failed, message will be sent unencoded');
+                finalData = raw;
+                encodedFlag = false;
+            }
+        }
+        const path = this.addMessagePath(message.path)
+        console.log(path)
         return {
             type,
             key: this.getMessageKey(),
             sourceId: message.sourceId || this.iframeId,
             targetId: message.targetId || this.defaultMainPageId,
             origin: this.origin,
-            path: this.addMessagePath(message.path),
-            data: this.enCodeMessage(message.data ?? {}) as unknown as string,
+            path,
+            data: finalData,
+            encoded: encodedFlag,
             timestamp: Date.now(),
         };
     }
@@ -263,9 +304,13 @@ export class IframeBridge {
 
     private async handleMessage(message?: IframeMessage) {
         if (!this.isMainPage()) {
+            console.log('Iframe handling message:', message);
             if (!message) return;
             message.path = this.addMessagePath(message.path || []);
+            console.log('Iframe added path:', message.path);
             const decoded = { ...message, data: this.deCodeMessage(message.data) };
+            console.log('Iframe received message:', decoded);
+            await Promise.resolve(); // 保证回调在异步时序上能被测试捕捉
             this.messageCallback?.(decoded);
             return;
         }
@@ -303,6 +348,7 @@ export class IframeBridge {
         if (this.isMainPage()) {
             if (built.targetId === this.defaultMainPageId) {
                 const decoded = { ...built, data: this.deCodeMessage(built.data) };
+                console.log('main decoded data:', decoded)
                 this.messageCallback?.(decoded);
             } else {
                 const target = this.registeredIframe[built.targetId as string];

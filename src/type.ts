@@ -21,6 +21,7 @@ export interface IframeMessage {
   origin?: string;
   path?: string[];
   data?: unknown; // 存放编码后的数据（base64字符串）
+  encoded?: boolean; // 数据是否经过编码
   timestamp?: number;
 }
 
